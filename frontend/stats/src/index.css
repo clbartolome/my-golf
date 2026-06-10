@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", system-ui, sans-serif;
+  --color-fairway-950: #061410;
+  --color-fairway-900: #0a1f17;
+  --color-fairway-800: #0f3d2e;
+  --color-fairway-700: #155744;
+  --color-fairway-600: #1a6b52;
+  --color-lime-glow: #b8f045;
+  --color-lime-soft: #d4f87a;
+  --color-sand: #f5e6c8;
+  --color-danger: #ff5c5c;
+  --color-water: #38bdf8;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-fairway-950);
+  color: white;
+}
+
+.card {
+  @apply rounded-2xl border border-white/10 bg-fairway-900/80 backdrop-blur-sm;
+}
+
+.stat-value {
+  @apply text-3xl font-extrabold tracking-tight tabular-nums;
+}
+
+@media (max-width: 768px) {
+  .stat-value { @apply text-2xl; }
+}

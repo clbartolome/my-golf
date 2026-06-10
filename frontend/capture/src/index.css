@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", system-ui, sans-serif;
+  --color-fairway-950: #061410;
+  --color-fairway-900: #0a1f17;
+  --color-fairway-800: #0f3d2e;
+  --color-fairway-700: #155744;
+  --color-fairway-600: #1a6b52;
+  --color-lime-glow: #b8f045;
+  --color-lime-soft: #d4f87a;
+  --color-sand: #f5e6c8;
+  --color-danger: #ff5c5c;
+  --color-water: #38bdf8;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-fairway-950);
+  color: white;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.safe-top {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.28s ease-out;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(184, 240, 69, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(184, 240, 69, 0);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s infinite;
+}

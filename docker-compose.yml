@@ -1,0 +1,53 @@
+# Podman: podman compose up --build
+# Docs: https://docs.podman.io/en/latest/markdown/podman-compose.1.html
+
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_USER: mygolf
+      POSTGRES_PASSWORD: mygolf
+      POSTGRES_DB: mygolf
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data:Z
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mygolf -d mygolf"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://mygolf:mygolf@db:5432/mygolf
+    depends_on:
+      db:
+        condition: service_healthy
+
+  capture:
+    build:
+      context: ./frontend/capture
+      args:
+        VITE_API_URL: /api
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+  stats:
+    build:
+      context: ./frontend/stats
+      args:
+        VITE_API_URL: /api
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
