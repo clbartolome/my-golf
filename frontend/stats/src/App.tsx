@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { BackupPage } from "./pages/BackupPage";
 import { BagPage } from "./pages/BagPage";
 import { ClubsPage } from "./pages/ClubsPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -19,6 +20,7 @@ export function App() {
           <Route path="/distances" element={<DistancesPage />} />
           <Route path="/par" element={<ParPage />} />
           <Route path="/rounds" element={<RoundsPage />} />
+          <Route path="/backup" element={<BackupPage />} />
           <Route path="/bag" element={<BagPage />} />
         </Route>
       </Routes>

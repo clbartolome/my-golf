@@ -7,6 +7,7 @@ const links = [
   { to: "/putting", label: "Putting" },
   { to: "/par", label: "Por par" },
   { to: "/rounds", label: "Rondas" },
+  { to: "/backup", label: "Copia" },
   { to: "/bag", label: "Bolsa" },
 ];
 

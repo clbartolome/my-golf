@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.bag_router import router as bag_router
+from app.backup_router import router as backup_router
 from app.routers import router as rounds_router
 from app.stats_router import router as stats_router
 
@@ -27,6 +28,7 @@ app.add_middleware(
 app.include_router(rounds_router)
 app.include_router(stats_router)
 app.include_router(bag_router)
+app.include_router(backup_router)
 
 
 @app.get("/health")

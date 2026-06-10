@@ -53,6 +53,21 @@ make seed-demo
 
 Tarda ~30 s. Luego abre http://localhost:3001 y filtra por **Campo Prueba**.
 
+## Copia de seguridad
+
+En http://localhost:3001/backup puedes **exportar** todos los datos (bolsa, rondas, hoyos y golpes) a un archivo JSON y **importarlo** después de levantar la app de nuevo.
+
+Flujo típico antes de apagar:
+
+1. `make up` → jugar / capturar rondas
+2. Estadísticas → **Copia** → **Descargar copia de seguridad**
+3. `make down` o `make clean`
+
+Para recuperar:
+
+1. `make up` (o `make reset-db` si quieres BBDD vacía)
+2. Estadísticas → **Copia** → subir el `.json` → **Reemplazar todo**
+
 ## Parar y limpiar
 
 **Parar** contenedores (los datos de la BBDD se conservan):

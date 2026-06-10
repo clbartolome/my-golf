@@ -333,3 +333,11 @@ export interface RoundStatsDetail {
   penalty_strokes: number;
   holes: HoleStats[];
 }
+
+export type ImportMode = "replace" | "merge";
+
+export interface BackupImportResult {
+  mode: string;
+  rounds_imported: number;
+  bag_clubs: number;
+}

@@ -8,6 +8,8 @@ import type {
   ParAnalysisResponse,
   PuttingAnalysisResponse,
   RoundRange,
+  BackupImportResult,
+  ImportMode,
   RoundDetail,
   RoundStatsDetail,
   RoundSummaryStats,
@@ -17,7 +19,17 @@ const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, init);
-  if (!res.ok) throw new Error(`Error ${res.status}`);
+  if (!res.ok) {
+    let detail = `Error ${res.status}`;
+    try {
+      const json = (await res.json()) as { detail?: string | { msg: string }[] };
+      if (typeof json.detail === "string") detail = json.detail;
+      else if (Array.isArray(json.detail)) detail = json.detail.map((d) => d.msg).join(", ");
+    } catch {
+      /* keep default */
+    }
+    throw new Error(detail);
+  }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
@@ -79,4 +91,37 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+
+  exportBackup: async () => {
+    const res = await fetch(`${API_BASE}/backup/export`);
+    if (!res.ok) {
+      let detail = `Error ${res.status}`;
+      try {
+        const json = (await res.json()) as { detail?: string };
+        if (json.detail) detail = json.detail;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(detail);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition");
+    const match = disposition?.match(/filename="([^"]+)"/);
+    const filename = match?.[1] ?? `my-golf-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  },
+
+  importBackup: (file: File, mode: ImportMode) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<BackupImportResult>(`/backup/import?mode=${mode}`, {
+      method: "POST",
+      body: form,
+    });
+  },
 };

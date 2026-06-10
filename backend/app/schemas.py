@@ -588,3 +588,58 @@ class ParAnalysisResponse(BaseModel):
     rounds_in_period: int
     by_par: list[ParTypeStats]
     insights: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Backup / restore
+# ---------------------------------------------------------------------------
+
+
+class ExportShot(BaseModel):
+    stroke_number: int
+    shot_type: ShotType
+    club: str | None = None
+    distance_before: Decimal | None = None
+    distance_after: Decimal | None = None
+    distance_unit: DistanceUnit | None = None
+    result: ShotResult | None = None
+    miss_line: ShotMissLine | None = None
+    penalty_reason: PenaltyReason | None = None
+    exclude_from_stats: bool = False
+
+
+class ExportHole(BaseModel):
+    hole_number: int
+    par: int
+    starting_distance: Decimal
+    starting_unit: DistanceUnit
+    completed: bool
+    completed_at: datetime | None = None
+    shots: list[ExportShot] = []
+
+
+class ExportRound(BaseModel):
+    course_name: str
+    tees: str | None = None
+    wind: str | None = None
+    planned_holes: int
+    played_at: datetime
+    status: RoundStatus
+    notes: str | None = None
+    course_rating: Decimal | None = None
+    slope_rating: int | None = None
+    holes: list[ExportHole] = []
+
+
+class BackupExport(BaseModel):
+    version: int
+    exported_at: datetime
+    app: str = "my-golf"
+    bag: list[str] = []
+    rounds: list[ExportRound] = []
+
+
+class BackupImportResult(BaseModel):
+    mode: str
+    rounds_imported: int
+    bag_clubs: int
