@@ -1,5 +1,5 @@
 import { Shot } from "../types";
-import { formatShotResult } from "../constants";
+import { formatShotDistances, formatShotResult } from "../constants";
 
 interface ShotTimelineProps {
   shots: Shot[];
@@ -33,7 +33,7 @@ export function ShotTimeline({ shots }: ShotTimelineProps) {
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{s.club}</p>
               <p className="truncate text-xs text-white/45">
-                {s.distance_before} → {s.distance_after ?? "?"} {s.distance_unit}
+                {formatShotDistances(s)}
                 {s.result && ` · ${formatShotResult(s.result, s.miss_line)}`}
               </p>
             </div>

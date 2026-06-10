@@ -1,12 +1,16 @@
 import type {
   BagClub,
-  ClubTrendSeries,
-  CourseStats,
-  HandicapStats,
-  OverviewStats,
-  RoundStats,
+  ClubAnalysisResponse,
+  DashboardResponse,
+  DistanceAnalysisResponse,
+  HolesFilter,
+  MinSample,
+  ParAnalysisResponse,
+  PuttingAnalysisResponse,
+  RoundRange,
+  RoundDetail,
+  RoundStatsDetail,
   RoundSummaryStats,
-  ScoringTrendPoint,
 } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
@@ -18,15 +22,41 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface DashboardParams {
+  round_range?: RoundRange;
+  holes_filter?: HolesFilter;
+  course?: string | null;
+  min_sample?: MinSample;
+}
+
+function qs(params: DashboardParams): string {
+  const q = new URLSearchParams();
+  if (params.round_range) q.set("round_range", params.round_range);
+  if (params.holes_filter) q.set("holes_filter", params.holes_filter);
+  if (params.course) q.set("course", params.course);
+  if (params.min_sample !== undefined) q.set("min_sample", String(params.min_sample));
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
 export const api = {
-  overview: () => request<OverviewStats>("/stats/overview"),
-  rounds: () => request<RoundSummaryStats[]>("/stats/rounds"),
-  round: (id: string) => request<RoundStats>(`/stats/rounds/${id}`),
-  courses: () => request<CourseStats[]>("/stats/courses"),
-  handicap: () => request<HandicapStats>("/stats/handicap"),
-  scoringTrends: () => request<ScoringTrendPoint[]>("/stats/trends/scoring"),
-  clubTrends: () => request<ClubTrendSeries[]>("/stats/trends/clubs"),
+  dashboard: (params: DashboardParams = {}) =>
+    request<DashboardResponse>(`/stats/dashboard${qs(params)}`),
+
+  clubs: (params: DashboardParams = {}) =>
+    request<ClubAnalysisResponse>(`/stats/clubs${qs(params)}`),
+
+  putting: (params: Omit<DashboardParams, "min_sample"> = {}) =>
+    request<PuttingAnalysisResponse>(`/stats/putting${qs(params)}`),
+
+  distances: (params: DashboardParams = {}) =>
+    request<DistanceAnalysisResponse>(`/stats/distances${qs(params)}`),
+
+  par: (params: Omit<DashboardParams, "min_sample"> = {}) =>
+    request<ParAnalysisResponse>(`/stats/par${qs(params)}`),
+
   bag: () => request<BagClub[]>("/bag"),
+
   saveBag: (clubs: string[]) =>
     request<string[]>("/bag", {
       method: "PUT",
@@ -34,8 +64,19 @@ export const api = {
       body: JSON.stringify({ clubs }),
     }),
 
+  rounds: () => request<RoundSummaryStats[]>("/stats/rounds"),
+
+  getRound: (id: string) => request<RoundDetail>(`/rounds/${id}`),
+
+  roundStats: (id: string) => request<RoundStatsDetail>(`/stats/rounds/${id}`),
+
   deleteRound: (id: string) =>
     request<void>(`/rounds/${id}`, { method: "DELETE" }),
 
-  shotAnalysis: () => request<import("../types").ShotAnalysisOverview>("/stats/shot-analysis"),
+  updateRound: (id: string, body: { status?: "completed" | "in_progress"; notes?: string }) =>
+    request<{ id: string }>(`/rounds/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
 };

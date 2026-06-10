@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { PageShell } from "../components/PageShell";
 
 export function BagPage() {
   const [clubs, setClubs] = useState<string[]>([]);
@@ -48,14 +49,11 @@ export function BagPage() {
   };
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      <div>
-        <h2 className="text-2xl font-extrabold tracking-tight md:text-3xl">Mi bolsa</h2>
-        <p className="mt-1 text-white/50">
-          Configura tus palos. Se sincroniza con la app de captura en el móvil.
-        </p>
-      </div>
-
+    <PageShell
+      title="Mi bolsa"
+      subtitle="Configura tus palos. Se sincroniza con la app de captura."
+    >
+      <div className="mx-auto max-w-md space-y-4">
       <ul className="card divide-y divide-white/8">
         {clubs.map((club, i) => (
           <li key={club} className="flex items-center gap-2 px-4 py-3">
@@ -102,6 +100,7 @@ export function BagPage() {
       </button>
 
       {msg && <p className="text-center text-sm text-lime-soft">{msg}</p>}
-    </div>
+      </div>
+    </PageShell>
   );
 }

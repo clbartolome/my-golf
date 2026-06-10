@@ -1,4 +1,4 @@
-import type { ShotLie, ShotLine } from "./types";
+import type { Hole, NextShotHint, ShotLie, ShotLine } from "./types";
 
 export type { ShotLie, ShotLine } from "./types";
 
@@ -161,6 +161,47 @@ export const WIND_OPTIONS = [
 ] as const;
 
 export const PAR_OPTIONS = [3, 4, 5] as const;
+
+export function getDefaultDistanceBefore(hole: Hole, nextHint: NextShotHint | null): string {
+  if (nextHint) return nextHint.distance_before;
+  const normals = hole.shots.filter((s) => s.shot_type === "normal");
+  const last = normals.at(-1);
+  if (last?.distance_after != null) return last.distance_after;
+  if (normals.length === 0) return hole.starting_distance;
+  return "";
+}
+
+export function shotCarryMeters(
+  distanceBefore: string | null,
+  distanceAfter: string | null,
+): number | null {
+  if (distanceBefore == null || distanceAfter == null) return null;
+  const carry = Number(distanceBefore) - Number(distanceAfter);
+  if (!Number.isFinite(carry) || carry < 0) return null;
+  return carry;
+}
+
+export function formatShotDistances(shot: {
+  distance_before: string | null;
+  distance_after: string | null;
+  distance_unit: string | null;
+  result: string | null;
+}): string {
+  const unit = shot.distance_unit ?? "m";
+  const before = shot.distance_before;
+  const after = shot.distance_after;
+  if (before == null) return `— ${unit}`;
+  const carry = shotCarryMeters(before, after);
+  if (shot.result === "holed" || after === "0") {
+    return `${before} ${unit} · ${before} m golpe · Dentro`;
+  }
+  if (carry != null && carry > 0 && after != null) {
+    const carryLabel = Number.isInteger(carry) ? `${carry}` : carry.toFixed(1);
+    return `${before} → ${carryLabel} m golpe → ${after} ${unit}`;
+  }
+  if (after != null) return `${before} → ${after} ${unit}`;
+  return `${before} ${unit} · sin distancia de golpe`;
+}
 
 export function nextStrokeNumber(shots: { stroke_number: number }[]): number {
   if (!shots.length) return 1;

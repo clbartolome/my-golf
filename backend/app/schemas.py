@@ -104,6 +104,7 @@ class HoleCreate(BaseModel):
 class ShotCreate(BaseModel):
     club: str = Field(min_length=1)
     distance_after: Decimal | None = Field(default=None, ge=0)
+    distance_carry: Decimal | None = Field(default=None, gt=0)
     distance_unit: DistanceUnit
     result: ShotResult
     miss_line: ShotMissLine | None = None
@@ -115,12 +116,19 @@ class ShotCreate(BaseModel):
             raise ValueError("Use lie (result) and miss_line separately")
         if self.result not in LIE_RESULTS:
             raise ValueError("Invalid lie result")
-        if self.result == ShotResult.holed and self.distance_after not in (None, Decimal("0")):
-            raise ValueError("holed shots must have distance_after 0 or omitted")
+        if self.distance_carry is not None and self.distance_after is not None:
+            raise ValueError("Use distance_carry or distance_after, not both")
+        if self.result == ShotResult.holed:
+            if self.distance_carry is not None:
+                raise ValueError("holed shots must not include distance_carry")
+            if self.distance_after not in (None, Decimal("0")):
+                raise ValueError("holed shots must have distance_after 0 or omitted")
         if self.distance_after == Decimal("0") and self.result != ShotResult.holed:
             self.result = ShotResult.holed
         if self.result in PENALTY_TRIGGER_RESULTS:
             self.miss_line = None
+            if self.distance_carry is not None:
+                raise ValueError("penalty results must not include distance_carry")
         elif self.result == ShotResult.holed:
             self.miss_line = ShotMissLine.on_target
         elif self.miss_line is None:
@@ -343,3 +351,240 @@ class ShotAnalysisOverview(BaseModel):
     putt: PhaseMissStats
     proximity_buckets: list[ProximityBucket]
     by_club: list[ClubMissStats]
+
+
+class DashboardFilters(BaseModel):
+    round_range: str
+    holes_filter: str
+    course: str | None
+
+
+class DashboardSummary(BaseModel):
+    avg_score_18: Decimal | None
+    best_score_18: int | None
+    worst_score_18: int | None
+    trend_score: Decimal | None
+
+
+class DashboardKPI(BaseModel):
+    label: str
+    value: Decimal | None
+    trend: Decimal | None
+    status: str
+
+
+class LostPointsCategory(BaseModel):
+    category: str
+    label: str
+    points_per_round: Decimal
+    pct_of_total: Decimal
+
+
+class DashboardObjective(BaseModel):
+    title: str
+    reason: str
+    action: str | None = None
+
+
+class DashboardResponse(BaseModel):
+    filters: DashboardFilters
+    available_courses: list[str]
+    rounds_in_period: int
+    insufficient_data: bool
+    summary: DashboardSummary
+    kpis: dict[str, DashboardKPI]
+    lost_points_ranking: list[LostPointsCategory]
+    recommended_objective: DashboardObjective
+    insights: list[str]
+
+
+class PercentRow(BaseModel):
+    label: str
+    pct: Decimal
+
+
+class DispersionHeatmap(BaseModel):
+    left_pct: Decimal
+    center_pct: Decimal
+    right_pct: Decimal
+    short_pct: Decimal
+    long_pct: Decimal
+
+
+class AnalyzedClub(BaseModel):
+    club: str
+    total_shots: int
+
+
+class BagClubRow(BaseModel):
+    club: str
+    total_shots: int
+    stroke_cost_per_round: Decimal
+    reliability_pct: Decimal
+
+
+class PuttDistanceBucket(BaseModel):
+    label: str
+    attempts: int
+    make_pct: Decimal | None
+
+
+class PuttingAnalysisResponse(BaseModel):
+    round_range: str
+    holes_filter: str
+    course: str | None
+    available_courses: list[str]
+    rounds_in_period: int
+    total_putts: int
+    putts_per_round: Decimal
+    stroke_cost_per_round: Decimal
+    make_pct: Decimal
+    avg_length_m: Decimal | None
+    one_putt_pct: Decimal | None
+    two_putt_pct: Decimal | None
+    three_putt_plus_pct: Decimal | None
+    dominant_pattern: str
+    dominant_pattern_pct: Decimal
+    heatmap: DispersionHeatmap
+    miss_breakdown: list[PercentRow]
+    distance_buckets: list[PuttDistanceBucket]
+
+
+class ClubRankingRow(BaseModel):
+    club: str
+    total_shots: int
+    eligible: bool
+    reliability_pct: Decimal
+    avg_distance_m: Decimal | None
+    control_pct: Decimal | None
+    stroke_cost_per_round: Decimal
+    penalty_share_pct: Decimal
+    penalty_pct: Decimal
+
+
+class ClubDetail(BaseModel):
+    club: str
+    total_shots: int
+    eligible: bool
+    avg_distance_m: Decimal | None
+    distance_p20: Decimal | None
+    distance_p80: Decimal | None
+    control_pct: Decimal | None
+    carry_std_dev_m: Decimal | None
+    reliability_pct: Decimal
+    stroke_cost_per_round: Decimal
+    penalty_pct: Decimal
+    dominant_pattern: str
+    dominant_pattern_pct: Decimal
+    heatmap: DispersionHeatmap
+    results_breakdown: list[PercentRow]
+    miss_breakdown: list[PercentRow]
+
+
+class ClubAnalysisSummary(BaseModel):
+    most_costly_club: str | None
+    most_costly_strokes: Decimal | None
+    most_reliable_club: str | None
+    most_reliable_pct: Decimal | None
+    top_penalty_source_club: str | None
+    top_penalty_source_pct: Decimal | None
+    total_shots_analyzed: int
+
+
+class ClubRecommendation(BaseModel):
+    title: str
+    reason: str
+
+
+class ClubAnalysisResponse(BaseModel):
+    round_range: str
+    holes_filter: str
+    course: str | None
+    available_courses: list[str]
+    rounds_in_period: int
+    min_sample: int
+    summary: ClubAnalysisSummary
+    analyzed_clubs: list[AnalyzedClub]
+    hurts_ranking: list[ClubRankingRow]
+    helps_ranking: list[ClubRankingRow]
+    ranking: list[ClubRankingRow]
+    bag_rows: list[BagClubRow]
+    clubs: dict[str, ClubDetail]
+    insights: list[str]
+    recommendation: ClubRecommendation | None
+
+
+class DistanceRow(BaseModel):
+    club: str
+    shots: int
+    avg_m: Decimal | None
+    median_m: Decimal | None
+    min_m: Decimal | None
+    max_m: Decimal | None
+
+
+class DistanceHistogramBar(BaseModel):
+    label: str
+    count: int
+
+
+class ClubDistanceDetail(BaseModel):
+    club: str
+    shots: int
+    avg_m: Decimal | None
+    median_m: Decimal | None
+    min_m: Decimal | None
+    max_m: Decimal | None
+    p10_m: Decimal | None
+    p25_m: Decimal | None
+    p75_m: Decimal | None
+    p90_m: Decimal | None
+    histogram: list[DistanceHistogramBar]
+
+
+class DistanceMapEntry(BaseModel):
+    club: str
+    median_m: Decimal
+    min_m: Decimal
+    max_m: Decimal
+    avg_m: Decimal
+
+
+class DistanceAnalysisResponse(BaseModel):
+    round_range: str
+    holes_filter: str
+    course: str | None
+    available_courses: list[str]
+    rounds_in_period: int
+    min_sample: int
+    bag_rows: list[DistanceRow]
+    yardage_map: list[DistanceMapEntry]
+    clubs: dict[str, ClubDistanceDetail]
+
+
+class ParScoreBreakdown(BaseModel):
+    label: str
+    count: int
+    pct: Decimal
+
+
+class ParTypeStats(BaseModel):
+    par: int
+    holes_played: int
+    avg_strokes: Decimal | None
+    avg_vs_par: Decimal | None
+    gir_pct: Decimal | None
+    fir_pct: Decimal | None
+    avg_putts: Decimal | None
+    penalty_hole_pct: Decimal | None
+    score_breakdown: list[ParScoreBreakdown]
+
+
+class ParAnalysisResponse(BaseModel):
+    round_range: str
+    holes_filter: str
+    course: str | None
+    available_courses: list[str]
+    rounds_in_period: int
+    by_par: list[ParTypeStats]
+    insights: list[str]

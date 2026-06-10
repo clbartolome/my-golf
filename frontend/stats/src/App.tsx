@@ -1,13 +1,12 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
-import { AnalysisPage } from "./pages/AnalysisPage";
 import { BagPage } from "./pages/BagPage";
-import { CoursesPage } from "./pages/CoursesPage";
+import { ClubsPage } from "./pages/ClubsPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { HandicapPage } from "./pages/HandicapPage";
-import { RoundDetailPage } from "./pages/RoundDetailPage";
+import { DistancesPage } from "./pages/DistancesPage";
+import { ParPage } from "./pages/ParPage";
+import { PuttingPage } from "./pages/PuttingPage";
 import { RoundsPage } from "./pages/RoundsPage";
-import { TrendsPage } from "./pages/TrendsPage";
 
 export function App() {
   return (
@@ -15,12 +14,11 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/analysis" element={<AnalysisPage />} />
-          <Route path="/handicap" element={<HandicapPage />} />
-          <Route path="/trends" element={<TrendsPage />} />
+          <Route path="/clubs" element={<ClubsPage />} />
+          <Route path="/putting" element={<PuttingPage />} />
+          <Route path="/distances" element={<DistancesPage />} />
+          <Route path="/par" element={<ParPage />} />
           <Route path="/rounds" element={<RoundsPage />} />
-          <Route path="/rounds/:id" element={<RoundDetailPage />} />
-          <Route path="/courses" element={<CoursesPage />} />
           <Route path="/bag" element={<BagPage />} />
         </Route>
       </Routes>

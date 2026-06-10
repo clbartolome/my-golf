@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ClubPicker } from "../components/ClubPicker";
+import {
+  CapturePhase,
+  phaseFooterClass,
+  PrepareRecap,
+  ShotPhaseSteps,
+} from "../components/CapturePhase";
 import { HoleSetup } from "../components/HoleSetup";
 import { HoleStrip } from "../components/HoleStrip";
 import { NumPad } from "../components/NumPad";
@@ -10,6 +16,7 @@ import { getResultMode, ResultPicker } from "../components/ResultPicker";
 import { Shell } from "../components/Shell";
 import { ShotTimeline } from "../components/ShotTimeline";
 import {
+  getDefaultDistanceBefore,
   isOnGreen,
   lieNeedsLine,
   nextStrokeNumber,
@@ -49,12 +56,12 @@ export function PlayPage() {
   const [setupPar, setSetupPar] = useState(4);
   const [setupDistance, setSetupDistance] = useState("");
 
-  // Shot entry
+  // Shot entry: fase 1 = palo + distancia al hoyo; fase 2 = resultado + distancia del golpe
   const [selectedClub, setSelectedClub] = useState<string | null>(null);
-  const [distance, setDistance] = useState("");
+  const [distanceBefore, setDistanceBefore] = useState("");
+  const [carry, setCarry] = useState("");
   const [selectedLie, setSelectedLie] = useState<ShotLie | null>(null);
   const [selectedLine, setSelectedLine] = useState<ShotLine | null>(null);
-  const [nextHint, setNextHint] = useState<NextShotHint | null>(null);
 
   // Penalty
   const [penaltyReason, setPenaltyReason] = useState<PenaltyReason | null>(null);
@@ -90,6 +97,15 @@ export function PlayPage() {
       .finally(() => setLoading(false));
   }, [id, refresh]);
 
+  const resetShotForm = (prefillBefore = "") => {
+    setSelectedClub(null);
+    setDistanceBefore(prefillBefore);
+    setCarry("");
+    setSelectedLie(null);
+    setSelectedLine(null);
+    setPhase("club");
+  };
+
   useEffect(() => {
     if (!round) return;
     const hole = round.holes.find((h) => h.hole_number === currentHoleNum);
@@ -106,49 +122,40 @@ export function PlayPage() {
       setView("club");
       setPhase("club");
       setSelectedClub(null);
-      setDistance("");
+      setCarry("");
       setSelectedLie(null);
       setSelectedLine(null);
       setPenaltyReason(null);
       setError(null);
       const hint = loadHint(hole.id);
-      if (hint) setNextHint(hint);
+      setDistanceBefore(getDefaultDistanceBefore(hole, hint));
     } else {
       const pending = pendingPenaltyReason(hole.shots);
       if (pending) {
         setPenaltyReason(pending);
         setView("club");
         setPhase("club");
-        resetShotForm(true);
+        resetShotForm(getDefaultDistanceBefore(hole, loadHint(hole.id)));
       } else {
         setView("club");
         setPhase("club");
-        resetShotForm();
+        resetShotForm(getDefaultDistanceBefore(hole, loadHint(hole.id)));
       }
     }
   }, [currentHoleNum, round?.holes]);
 
-  const resetShotForm = (keepHint = false) => {
-    setSelectedClub(null);
-    setDistance("");
-    setSelectedLie(null);
-    setSelectedLine(null);
-    setPhase("club");
-    if (!keepHint) setNextHint(null);
-  };
-
   const handleSelectLie = (lie: ShotLie) => {
     setSelectedLie(lie);
     if (lie === "holed") {
-      setDistance("0");
+      setCarry("");
       setSelectedLine("on_target");
     } else if (PENALTY_LIES.has(lie)) {
+      setCarry("");
       setSelectedLine(null);
     }
   };
 
   const storeHint = (holeId: string, hint: NextShotHint) => {
-    setNextHint(hint);
     sessionStorage.setItem(`hint-${holeId}`, JSON.stringify(hint));
   };
 
@@ -164,7 +171,6 @@ export function PlayPage() {
 
   const clearHint = (holeId: string) => {
     sessionStorage.removeItem(`hint-${holeId}`);
-    setNextHint(null);
   };
 
   const startHole = async () => {
@@ -180,6 +186,7 @@ export function PlayPage() {
       });
       await refresh();
       setView("club");
+      setDistanceBefore(setupDistance);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -194,14 +201,19 @@ export function PlayPage() {
     const isHoled = selectedLie === "holed";
     const isPenaltyLie = PENALTY_LIES.has(selectedLie);
     const needsLine = lieNeedsLine(selectedLie);
-    const distValue = isHoled ? 0 : distance ? Number(distance) : null;
+    const beforeValue = Number(distanceBefore);
+    const carryValue = carry ? Number(carry) : null;
 
+    if (!distanceBefore || beforeValue <= 0) {
+      setError("Introduce la distancia al hoyo antes de golpear");
+      return;
+    }
     if (needsLine && !selectedLine) {
       setError("Indica la línea del tiro");
       return;
     }
-    if (!isHoled && !isPenaltyLie && (!distValue || distValue < 0)) {
-      setError("Introduce la distancia al hoyo");
+    if (!isHoled && !isPenaltyLie && carryValue !== null && carryValue > beforeValue) {
+      setError("La distancia del golpe no puede ser mayor que la distancia al hoyo");
       return;
     }
 
@@ -212,16 +224,11 @@ export function PlayPage() {
         club: selectedClub,
         distance_unit: unit,
         result: selectedLie,
+        distance_before: beforeValue,
       };
       if (needsLine && selectedLine) body.miss_line = selectedLine;
-      if (nextHint) body.distance_before = Number(nextHint.distance_before);
-      else if (currentHole.shots.at(-1)?.shot_type === "penalty") {
-        setError("Falta la distancia tras la penalización. Vuelve a confirmar rejuego o suelto.");
-        setSubmitting(false);
-        return;
-      }
       if (isHoled) body.distance_after = 0;
-      else if (distValue !== null && !isPenaltyLie) body.distance_after = distValue;
+      else if (!isPenaltyLie && carryValue !== null && carryValue > 0) body.distance_carry = carryValue;
 
       const res = await api.addShot(currentHole.id, body);
 
@@ -233,10 +240,11 @@ export function PlayPage() {
 
       clearHint(currentHole.id);
       await refresh();
-      if (isHoled || distValue === 0) {
+      if (isHoled || res.shot.distance_after === "0") {
         setView("done");
       } else {
-        resetShotForm();
+        const nextBefore = res.shot.distance_after ?? "";
+        resetShotForm(nextBefore);
         setView("club");
       }
     } catch (e) {
@@ -264,10 +272,11 @@ export function PlayPage() {
       setError(null);
       await refresh();
       setSelectedClub(null);
-      setDistance("");
+      setCarry("");
       setSelectedLie(null);
       setSelectedLine(null);
       setPhase("club");
+      setDistanceBefore(res.next_shot_hint.distance_before);
       setView("club");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error en penalización");
@@ -290,11 +299,14 @@ export function PlayPage() {
   };
 
   const resultMode = getResultMode(currentHole?.par ?? 4, strokeNum, onGreen);
+  const canProceedToResult =
+    Boolean(selectedClub) && Boolean(distanceBefore) && Number(distanceBefore) > 0 && !submitting;
   const canSubmitShot =
     selectedLie &&
     !submitting &&
-    (!lieNeedsLine(selectedLie) || selectedLine) &&
-    (selectedLie === "holed" || PENALTY_LIES.has(selectedLie) || Boolean(distance));
+    Boolean(distanceBefore) &&
+    Number(distanceBefore) > 0 &&
+    (!lieNeedsLine(selectedLie) || selectedLine);
 
   if (loading) {
     return (
@@ -342,14 +354,15 @@ export function PlayPage() {
         </div>
       }
       footer={
-        view === "club" && phase === "club" && selectedClub ? (
+        view === "club" && phase === "club" ? (
           <div className="p-4">
             <button
               type="button"
+              disabled={!canProceedToResult}
               onClick={() => setPhase("result")}
-              className="w-full min-h-16 rounded-2xl bg-lime-glow text-lg font-bold text-fairway-950"
+              className={phaseFooterClass("prepare")}
             >
-              He golpeado con {selectedClub}
+              {selectedClub ? `He golpeado con ${selectedClub}` : "Elige palo y distancia"}
             </button>
           </div>
         ) : view === "club" && phase === "result" ? (
@@ -358,7 +371,7 @@ export function PlayPage() {
               type="button"
               disabled={!canSubmitShot}
               onClick={submitShot}
-              className="w-full min-h-16 rounded-2xl bg-lime-glow text-lg font-bold text-fairway-950 disabled:opacity-40"
+              className={phaseFooterClass("result")}
             >
               {submitting ? "Guardando…" : "Guardar golpe"}
             </button>
@@ -405,62 +418,75 @@ export function PlayPage() {
 
         {view === "club" && currentHole && (
           <div className="space-y-5">
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-white/45">
-                  Hoyo {currentHoleNum} · Par {currentHole.par}
-                </p>
-                <h2 className="text-3xl font-extrabold">
-                  Golpe {strokeNum}
-                  {onGreen && <span className="ml-2 text-base font-medium text-lime-glow">en green</span>}
-                </h2>
-              </div>
-              {nextHint && (
-                <p className="text-right text-sm text-white/50">
-                  Desde
-                  <br />
-                  <span className="text-lg font-bold text-white">
-                    {nextHint.distance_before} {nextHint.distance_unit}
-                  </span>
-                </p>
-              )}
+            <div>
+              <p className="text-xs uppercase tracking-wider text-white/45">
+                Hoyo {currentHoleNum} · Par {currentHole.par}
+              </p>
+              <h2 className="text-3xl font-extrabold">
+                Golpe {strokeNum}
+                {onGreen && <span className="ml-2 text-base font-medium text-lime-glow">en green</span>}
+              </h2>
             </div>
 
+            <ShotPhaseSteps active={phase === "club" ? "prepare" : "result"} />
+
             {phase === "club" ? (
-              <>
-                <p className="text-sm text-white/50">Elige el palo antes de golpear</p>
+              <CapturePhase
+                step={1}
+                title="Antes de golpear"
+                description="Mide con el reloj la distancia al hoyo y elige el palo."
+                tone="prepare"
+              >
+                <NumPad
+                  value={distanceBefore}
+                  onChange={setDistanceBefore}
+                  label="Distancia al hoyo"
+                  hint="Reloj → al pin"
+                  unit="m"
+                  tone="prepare"
+                  allowDecimal
+                />
                 <ClubPicker
                   clubs={clubs}
                   selected={selectedClub}
                   onSelect={setSelectedClub}
                   lastClub={lastClub}
                 />
-              </>
+              </CapturePhase>
             ) : (
               <>
-                <div className="rounded-2xl border border-white/10 bg-white/4 px-4 py-3">
-                  <p className="text-xs text-white/45">Palo</p>
-                  <p className="text-xl font-bold">{selectedClub}</p>
-                  <button
-                    type="button"
-                    onClick={() => setPhase("club")}
-                    className="mt-1 text-xs text-lime-glow/80"
-                  >
-                    Cambiar palo
-                  </button>
-                </div>
-
-                {selectedLie && selectedLie !== "holed" && !PENALTY_LIES.has(selectedLie) && (
-                  <NumPad value={distance} onChange={setDistance} unit="m" allowDecimal />
-                )}
-
-                <ResultPicker
-                  mode={resultMode}
-                  selectedLie={selectedLie}
-                  selectedLine={selectedLine}
-                  onSelectLie={handleSelectLie}
-                  onSelectLine={setSelectedLine}
+                <PrepareRecap
+                  club={selectedClub ?? "—"}
+                  distanceBefore={distanceBefore}
+                  onEdit={() => setPhase("club")}
                 />
+
+                <CapturePhase
+                  step={2}
+                  title="En la bola"
+                  description="Indica dónde quedó y, si puedes, cuántos metros hizo el golpe."
+                  tone="result"
+                >
+                  <ResultPicker
+                    mode={resultMode}
+                    selectedLie={selectedLie}
+                    selectedLine={selectedLine}
+                    onSelectLie={handleSelectLie}
+                    onSelectLine={setSelectedLine}
+                  />
+
+                  {selectedLie && selectedLie !== "holed" && !PENALTY_LIES.has(selectedLie) && (
+                    <NumPad
+                      value={carry}
+                      onChange={setCarry}
+                      label="Distancia del golpe"
+                      hint="Opcional · reloj → carry"
+                      unit="m"
+                      tone="result"
+                      allowDecimal
+                    />
+                  )}
+                </CapturePhase>
               </>
             )}
 

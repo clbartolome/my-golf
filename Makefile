@@ -1,10 +1,14 @@
-.PHONY: up down logs ps health reset-db dev-capture migrate
+.PHONY: up down logs ps health reset-db clean seed-demo dev-capture dev-stats migrate
 
 up:
 	podman compose up --build -d
 
 down:
 	podman compose down
+
+# Para contenedores y borra la base de datos (volúmenes)
+clean:
+	podman compose down -v
 
 logs:
 	podman compose logs -f
@@ -32,3 +36,7 @@ dev-capture:
 # Solo front de stats en dev (API en :8000)
 dev-stats:
 	cd frontend/stats && npm install && npm run dev
+
+# 10 rondas de prueba en «Campo Prueba» (requiere API en :8000)
+seed-demo:
+	python3 scripts/seed_demo_rounds.py --clean --rounds 10 --course "Campo Prueba"

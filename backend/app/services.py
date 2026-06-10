@@ -176,10 +176,11 @@ async def create_shot(db: AsyncSession, hole_id: uuid.UUID, payload: ShotCreate)
         and shots[-1].shot_type == ShotType.normal
         and shots[-1].distance_after is None
         and shots[-1].result not in PENALTY_TRIGGER_RESULTS
+        and payload.distance_before is None
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Previous shot has no distance_after",
+            detail="Previous shot has no distance_after; provide distance_before from your watch",
         )
     if shots and shots[-1].shot_type == ShotType.normal and shots[-1].result in PENALTY_TRIGGER_RESULTS:
         raise HTTPException(
@@ -188,7 +189,15 @@ async def create_shot(db: AsyncSession, hole_id: uuid.UUID, payload: ShotCreate)
         )
 
     distance_before = _resolve_distance_before(hole, shots, payload.distance_before)
-    distance_after = payload.distance_after
+    if payload.distance_carry is not None:
+        distance_after = distance_before - payload.distance_carry
+        if distance_after < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="distance_carry cannot exceed distance_before",
+            )
+    else:
+        distance_after = payload.distance_after
     if payload.result == ShotResult.holed and distance_after is None:
         distance_after = Decimal("0")
 

@@ -78,6 +78,7 @@ export const api = {
     body: {
       club: string;
       distance_after?: number | null;
+      distance_carry?: number;
       distance_unit: "m";
       result: string;
       miss_line?: string;

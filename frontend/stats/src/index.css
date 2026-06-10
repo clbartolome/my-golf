@@ -26,8 +26,28 @@ body {
   @apply rounded-2xl border border-white/10 bg-fairway-900/80 backdrop-blur-sm;
 }
 
+.page {
+  @apply w-full space-y-5;
+}
+
+.page-title {
+  @apply text-xl font-extrabold tracking-tight md:text-2xl;
+}
+
+.page-subtitle {
+  @apply mt-0.5 text-sm text-white/50;
+}
+
+.page-footer {
+  @apply text-xs text-white/30;
+}
+
+.panel {
+  @apply rounded-xl border border-white/8 bg-white/[0.03];
+}
+
 .stat-value {
-  @apply text-3xl font-extrabold tracking-tight tabular-nums;
+  @apply text-2xl font-extrabold tracking-tight tabular-nums md:text-3xl;
 }
 
 @media (max-width: 768px) {

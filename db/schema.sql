@@ -128,7 +128,8 @@ CREATE TABLE shots (
 );
 
 COMMENT ON TABLE shots IS 'Secuencia de golpes y penalizaciones de un hoyo.';
-COMMENT ON COLUMN shots.distance_before IS 'Explícita siempre en golpes normales. Tras rejuego = misma que el golpe fallido; tras drop = la que introduces.';
+COMMENT ON COLUMN shots.distance_before IS 'Distancia al hoyo antes del golpe (reloj/GPS). Obligatoria en captura.';
+COMMENT ON COLUMN shots.distance_after IS 'Distancia restante al hoyo tras el golpe. Se deriva de distance_before − carry o se introduce legacy.';
 COMMENT ON COLUMN shots.stroke_number IS 'Orden en el hoyo; incluye filas de penalización (+1 al score).';
 
 -- ---------------------------------------------------------------------------
