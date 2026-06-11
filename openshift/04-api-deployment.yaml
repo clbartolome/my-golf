@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    app: my-golf
+    component: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-golf
+      component: api
+  template:
+    metadata:
+      labels:
+        app: my-golf
+        component: api
+    spec:
+      containers:
+        - name: api
+          image: quay.io/calopezb/my-golf-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - secretRef:
+                name: db-credentials
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10

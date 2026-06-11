@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  labels:
+    app: my-golf
+    component: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-golf
+      component: db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: my-golf
+        component: db
+    spec:
+      serviceAccountName: db
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: quay.io/calopezb/my-golf-db:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5432
+              name: postgres
+          envFrom:
+            - secretRef:
+                name: db-credentials
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run-postgresql
+              mountPath: /var/run/postgresql
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - mygolf
+                - -d
+                - mygolf
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - mygolf
+                - -d
+                - mygolf
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: db-data
+        - name: run-postgresql
+          emptyDir: {}

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stats
+  labels:
+    app: my-golf
+    component: stats
+spec:
+  selector:
+    app: my-golf
+    component: stats
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

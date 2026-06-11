@@ -100,3 +100,87 @@ make reset-db
 | `make health` | Comprobar API |
 | `make ps` | Estado de contenedores |
 | `make logs` | Logs en vivo |
+| `make up-prod` | Levantar con imágenes de Quay (compose prod) |
+| `make openshift-deploy` | Desplegar en OpenShift |
+| `make openshift-routes` | Ver URLs de Routes |
+| `make openshift-delete` | Quitar despliegue OpenShift |
+
+## Imágenes en Quay.io
+
+Componentes publicados en `quay.io/calopezb/my-golf-<componente>`:
+
+| Imagen | Componente |
+|--------|------------|
+| `my-golf-db` | PostgreSQL + schema inicial |
+| `my-golf-api` | Backend FastAPI |
+| `my-golf-capture` | Frontend captura |
+| `my-golf-stats` | Frontend estadísticas |
+
+**Login** (una vez, o cuando caduque la sesión):
+
+```bash
+make login-quay
+```
+
+**Construir** todas las imágenes localmente:
+
+```bash
+make build-images
+```
+
+**Subir** a Quay (construye y hace push):
+
+```bash
+make push-images
+```
+
+Etiqueta distinta de `latest`:
+
+```bash
+make push-images TAG=v0.1.0
+```
+
+**Bajar** imágenes desde Quay:
+
+```bash
+make pull-images
+```
+
+**Levantar** con imágenes de Quay (sin build local):
+
+```bash
+make pull-images   # opcional si no están en local
+make up-prod
+```
+
+Usa `docker-compose.prod.yml` en lugar del compose de desarrollo.
+
+## OpenShift
+
+Manifiestos en [`openshift/`](openshift/): Namespace, Secret, PVC (storage class por defecto), Deployments, Services y Routes (capture + stats). La API solo es interna; los frontends hacen proxy de `/api` al Service `api`.
+
+**Requisitos:** `oc` logueado con permisos de admin (para asignar SCC), imágenes en Quay (`make push-images`).
+
+El deploy asigna **anyuid** a los ServiceAccounts `db`, `capture` y `stats` (Postgres y nginx necesitan permisos de escritura en rutas del sistema).
+
+**Desplegar** (reconstruye y sube la imagen `db` si cambió el Dockerfile):
+
+```bash
+make push-db
+oc delete pvc db-data -n my-golf   # necesario si ya falló un arranque previo
+make openshift-deploy
+```
+
+Ver URLs de las Routes:
+
+```bash
+make openshift-routes
+```
+
+**Borrar** todo el despliegue:
+
+```bash
+make openshift-delete
+```
+
+Namespace por defecto: `my-golf` (`make openshift-deploy NS=otro-nombre`).
